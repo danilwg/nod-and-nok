@@ -78,12 +78,10 @@ def add_book():
             print("Год издания должен быть положительным числом и не больше текущего года.")
             return
 
-        # Запрашиваем начальные оценки
         ratings_input = input("Введите начальные оценки через запятую (или нажмите Enter для пропуска): ").strip()
         if ratings_input:
             try:
                 ratings = [int(r.strip()) for r in ratings_input.split(',')]
-                # Проверяем, что все оценки в допустимом диапазоне
                 for rating in ratings:
                     if rating < 1 or rating > 5:
                         raise ValueError
@@ -268,7 +266,6 @@ def import_from_csv():
                     year = int(year_str)
                     ratings = [int(r) for r in ratings_str.split(',')] if ratings_str else []
                     
-                    # Проверяем оценки на допустимость
                     for rating in ratings:
                         if rating < 1 or rating > 5:
                             raise ValueError(f"Недопустимая оценка: {rating}")
@@ -287,4 +284,5 @@ def import_from_csv():
         print(f"Ошибка при импорте: {e}")
 
 if __name__ == "__main__":
+
     menu()
