@@ -1,0 +1,57 @@
+import numpy as np
+# Задача 1
+class EvenIterator:
+    def __init__(self, n):
+        self.n = n
+        self.current = 2
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.current > self.n:
+            raise StopIteration
+        result = self.current
+        self.current += 2
+        return result
+
+for x in EvenIterator(10):
+    print(x)
+
+# Задача 2
+class ReverseList:
+    def __init__(self, data):
+        self.data = data
+        self.index = len(data) - 1
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.index < 0:
+            raise StopIteration
+        result = self.data[self.index]
+        self.index -= 1
+        return result
+
+data = [10, 20, 30]
+for x in ReverseList(data):
+    print(x)
+
+# Задача 3
+arr = np.array([3, 7, 1, 9, 4])
+print(f"Максимум: {arr.max()}")
+print(f"Среднее: {arr.mean()}")
+
+# Задача 4
+arr = np.array([2, 8, 4, 10, 3])
+print(f"Больше 5: {arr[arr > 5]}")
+
+# Задача 5
+a = np.array([1, 2, 3])
+b = np.array([4, 5, 6])
+print(f"Сумма: {a + b}")
+
+# Задача 6
+arr = np.array([1, 2, 3, 4])
+print(f"Умножено на 3: {arr * 3}")
