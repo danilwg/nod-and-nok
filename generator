@@ -1,0 +1,53 @@
+from functools import reduce
+
+numbers = [5, 12, 7, 20, 3, 18, 2, 15, 9, 30, 11, 6]
+
+# 1. Генератор greater_than_ten
+def greater_than_ten(numbers):
+    for num in numbers:
+        if num > 10:
+            yield num
+
+# 2. Генератор square_numbers
+def square_numbers(numbers):
+    for num in numbers:
+        yield num ** 2
+
+# 3. Чётные квадраты чисел с помощью filter
+numbers = list(filter(lambda x: x % 2 == 0, numbers))  # Добавлен второй аргумент
+print(numbers)
+
+# 4. Преобразование в строки с помощью map
+value_strings = list(map(lambda x: f"value={x}", numbers))
+print(value_strings)
+
+# 5. Использование reduce
+# Сумма всех чисел
+total_sum = reduce(lambda x, y: x + y, numbers)
+print(total_sum)
+# Максимальное число
+max_number = reduce(lambda acc, x: acc if acc > x else x, numbers)
+print(max_number)
+
+# 6. Генератор multiples_of_three
+def multiples_of_three(n):
+    count = 0
+    num = 3
+    while count < n:
+        yield num
+        num += 3
+        count += 1
+print(list(multiples_of_three(5)))
+
+# 7. Генератор word_generator
+def word_generator(text):
+    words = text.split()
+    for word in words:
+        yield word
+
+# 8. Обработка текста
+text = "моё имя данил"
+words = word_generator(text)
+filtered_words = list(filter(lambda word: len(word) > 4, words))
+uppercase_words = list(map(lambda word: word.upper(), filtered_words))
+print(uppercase_words)
