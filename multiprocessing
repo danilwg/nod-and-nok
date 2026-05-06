@@ -1,0 +1,278 @@
+import time
+import threading
+import multiprocessing
+import asyncio
+
+# ЧАСТЬ 1: Сравнение синхронного и многопоточного выполнения
+
+def process_order(order_id):
+    """
+    Имитация обработки заказа:
+    - ждём (как будто запрос к базе данных или внешнему API)
+    - немного считаем (CPU-нагрузка)
+    """
+    #  I/O операция (ожидание)
+    time.sleep(1)  # Имитация задержки, например, ответ от сервера
+
+    #  CPU-нагрузка (вычисления)
+    total = 0
+    for i in range(300_000):
+        total += (i * i) % 1000  # простые математические операции
+
+    print(f"Заказ {order_id} готов. Сумма: {total}")
+    return total
+
+
+def part1_sync():
+    """
+    Синхронное выполнение:
+    - каждый следующий заказ ждёт завершения предыдущего
+    - общее время = сумма всех задержек + сумма всех вычислений
+    """
+    print("\n=== ЧАСТЬ 1: СИНХРОННО (5 заказов) ===")
+    start = time.time()
+
+    for order_id in range(1, 6):
+        process_order(order_id)
+
+    elapsed = time.time() - start
+    print(f"Время синхронно: {elapsed:.2f} сек")
+    return elapsed
+
+
+def part1_threading():
+    """
+    Многопоточное выполнение:
+    - все заказы запускаются одновременно в разных потоках
+    - ожидание происходит параллельно (пока один поток ждёт, другой работает)
+    - НО: CPU-нагрузка всё равно выполняется по очереди из-за GIL
+    - выигрыш только за счёт параллельного ожидания
+    """
+    print("\n=== ЧАСТЬ 1: THREADING (5 заказов) ===")
+    start = time.time()
+
+    threads = []
+    for order_id in range(1, 6):
+        # Создаём поток для каждого заказа
+        t = threading.Thread(target=process_order, args=(order_id,))
+        threads.append(t)
+        t.start()  # Запускаем поток (не ждём завершения)
+
+    # Ждём завершения ВСЕХ потоков
+    for t in threads:
+        t.join()
+
+    elapsed = time.time() - start
+    print(f"Время threading: {elapsed:.2f} сек")
+    return elapsed
+
+# ЧАСТЬ 2: Сравнение последовательного и многопроцессного выполнения
+
+def heavy_computation(n):
+    """
+    Тяжёлые вычисления:
+    - нет операций ожидания (чистая CPU-нагрузка)
+    - большой цикл с математикой
+    - идеальный кандидат для multiprocessing
+    """
+    result = 0
+    for i in range(5_000_000):
+        result += (i * n) % 1000      # умножение и остаток
+        if i % 2 == 0:
+            result += (i ** 2) % 500  # возведение в степень
+
+    print(f"Вычисление n={n} завершено. Результат: {result}")
+    return result
+
+def part2_sequential():
+    """
+    Последовательное выполнение:
+    - каждое вычисление ждёт завершения предыдущего
+    - используется только одно ядро процессора
+    """
+    print("\n=== ЧАСТЬ 2: ПОСЛЕДОВАТЕЛЬНО (4 задачи) ===")
+    start = time.time()
+
+    results = []
+    for n in [1, 2, 3, 4]:
+        results.append(heavy_computation(n))
+
+    elapsed = time.time() - start
+    print(f"Время последовательно: {elapsed:.2f} сек")
+    return elapsed
+
+
+def part2_multiprocessing():
+    """
+    Многопроцессное выполнение:
+    - каждая задача запускается в отдельном процессе
+    - каждый процесс использует своё ядро процессора
+    - нет проблемы GIL (у каждого процесса свой интерпретатор Python)
+    """
+    print("\n=== ЧАСТЬ 2: MULTIPROCESSING (4 задачи) ===")
+    start = time.time()
+
+    # Pool автоматически создаёт процессы по числу ядер
+    with multiprocessing.Pool() as pool:
+        results = pool.map(heavy_computation, [1, 2, 3, 4])
+
+    elapsed = time.time() - start
+    print(f"Время multiprocessing: {elapsed:.2f} сек")
+    return elapsed
+
+# ЧАСТЬ 3: Асинхронное выполнение
+
+async def async_request(user_id):
+    """
+    Асинхронная функция (корутина):
+    - await asyncio.sleep() не блокирует весь поток
+    - пока одна корутина "спит", другие могут работать
+    - НО: CPU-часть всё ещё выполняется последовательно
+    - выигрыш только на операциях ожидания
+    """
+    # Асинхронное ожидание (не блокирует event loop)
+    await asyncio.sleep(1)  # await "отдаёт управление" другим корутинам
+
+    # CPU-нагрузка (блокирует event loop, все остальные ждут)
+    total = 0
+    for i in range(300_000):
+        total += i % 1000 if i % 2 == 0 else i % 500
+
+    print(f"Пользователь {user_id} обслужен. Результат: {total}")
+    return total
+
+
+async def part3_async():
+    """
+    Асинхронный запуск 10 задач:
+    - asyncio.gather() запускает все корутины "одновременно"
+    - все ожидания происходят параллельно
+    - общее время ≈ время самой долгой задачи
+    """
+    print("\n=== ЧАСТЬ 3: ASYNC (10 задач) ===")
+    start = time.time()
+
+    # Создаём список из 10 корутин
+    tasks = [async_request(i) for i in range(1, 11)]
+    # Запускаем все одновременно и ждём завершения
+    results = await asyncio.gather(*tasks)
+
+    elapsed = time.time() - start
+    print(f"Время async: {elapsed:.2f} сек")
+    return elapsed
+
+# ЧАСТЬ 4: Смешанный сценарий (сравнение всех подходов)
+
+def universal_task(task_id):
+    """
+    Универсальная задача:
+    - ожидание (I/O)
+    - вычисления (CPU)
+    - снова ожидание (I/O)
+    - финальная обработка
+    """
+    # Первая I/O операция
+    time.sleep(1)
+
+    # CPU-нагрузка
+    result = 0
+    for i in range(1_000_000):
+        result += (i * task_id) % 100
+        result += i % 50 if i % 2 == 0 else 0
+
+    # Вторая I/O операция
+    time.sleep(1)
+
+    # Финальная обработка
+    final = result % 10000
+    print(f"Задача {task_id}: {final}")
+    return final
+
+def part4_sync():
+    """Синхронный запуск - всё по очереди"""
+    print("\n=== ЧАСТЬ 4: СИНХРОННО (5 задач) ===")
+    start = time.time()
+    for i in range(1, 6):
+        universal_task(i)
+    elapsed = time.time() - start
+    print(f"Время sync: {elapsed:.2f} сек")
+    return elapsed
+
+def part4_threading():
+    """
+    Threading:
+    - I/O-ожидания параллельны (хорошо)
+    - CPU-части выполняются по очереди из-за GIL (плохо)
+    """
+    print("\n=== ЧАСТЬ 4: THREADING (5 задач) ===")
+    start = time.time()
+    threads = [threading.Thread(target=universal_task, args=(i,)) for i in range(1, 6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    elapsed = time.time() - start
+    print(f"Время threading: {elapsed:.2f} сек")
+    return elapsed
+
+def part4_multiprocessing():
+    """
+    Multiprocessing:
+    - каждый процесс полностью независим
+    - и I/O, и CPU выполняются параллельно
+    - но накладные расходы на создание процессов выше
+    """
+    print("\n=== ЧАСТЬ 4: MULTIPROCESSING (5 задач) ===")
+    start = time.time()
+    with multiprocessing.Pool() as pool:
+        pool.map(universal_task, [1, 2, 3, 4, 5])
+    elapsed = time.time() - start
+    print(f"Время multiprocessing: {elapsed:.2f} сек")
+    return elapsed
+
+# ГЛАВНАЯ ФУНКЦИЯ: запуск всех тестов и вывод сравнения
+
+def main():
+    """
+    Запускаем все части и сравниваем результаты.
+    Делаем выводы о том, какой подход лучше для разных типов задач.
+    """
+    print("СРАВНЕНИЕ ПОДХОДОВ К МНОГОЗАДАЧНОСТИ В PYTHON")
+    print("=" * 50)
+
+    # Часть 1: I/O-bound задача (много ожидания)
+    t1_sync = part1_sync()
+    t1_thread = part1_threading()
+    print(f"\n>>> Вывод часть 1: threading быстрее в {t1_sync/t1_thread:.1f} раз")
+    print("    (потому что ожидание выполняется параллельно)")
+
+    # Часть 2: CPU-bound задача (много вычислений)
+    t2_seq = part2_sequential()
+    t2_mp = part2_multiprocessing()
+    print(f"\n>>> Вывод часть 2: multiprocessing быстрее в {t2_seq/t2_mp:.1f} раз")
+    print("    (потому что используются все ядра процессора)")
+
+    # Часть 3: Асинхронность (много конкурентных ожиданий)
+    t3_async = asyncio.run(part3_async())
+    print(f"\n>>> Вывод часть 3: async выполнил 10 задач за {t3_async:.1f} сек")
+    print("    (все ожидания были параллельными)")
+
+    # Часть 4: Смешанная нагрузка
+    t4_sync = part4_sync()
+    t4_thread = part4_threading()
+    t4_mp = part4_multiprocessing()
+    print(f"\n>>> Вывод часть 4 (смешанная нагрузка):")
+    print(f"    Threading быстрее sync в {t4_sync/t4_thread:.1f} раз")
+    print(f"    Multiprocessing быстрее sync в {t4_sync/t4_mp:.1f} раз")
+
+    # Итоговая таблица
+    print("\n" + "=" * 67)
+    print("ИТОГО: КОГДА ЧТО ИСПОЛЬЗОВАТЬ?")
+    print("=" * 67)
+    print("• Много ожидания (I/O) → threading или async")
+    print("• Много вычислений (CPU) → multiprocessing")
+    print("• Смешанная нагрузка    → зависит от比例 I/O и CPU")
+    print("• Тысячи соединений     → async (лёгкие корутины)")
+    print("• Простая параллельность → threading (проще в использовании)")
+if __name__ == "__main__":
+    main()
